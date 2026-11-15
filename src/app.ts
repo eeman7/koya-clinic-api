@@ -49,18 +49,21 @@ app.use((req, _res, next) => {
   if (!SITE_ALLOWED.some(([m, re]) => m === req.method && re.test(target))) {
     return next(new NotFoundException("not found"));
   }
-  req.url = target;
+  req.url = "/api" + target;
   req.headers["x-api-key"] = env.API_KEY;
   next();
 });
 
-// 3. API key guard — runs before body parsing so bad keys always get 401
-app.use(requireApiKey);
-app.use(express.json());
+// 3. The API, mounted at /api. The key guard runs before body parsing so a bad
+//    key always gets 401.
+const api = express.Router();
+api.use(requireApiKey);
+api.use(express.json());
+api.use(slotsRoutes);
+api.use("/bookings", bookingsRoutes);
+app.use("/api", api);
 
-// 4. Protected API
-app.use(slotsRoutes);
-app.use("/bookings", bookingsRoutes);
+// 4. Anything else
 app.use((_req, _res, next) => next(new NotFoundException("not found")));
 
 // 5. Global error handler — must be last

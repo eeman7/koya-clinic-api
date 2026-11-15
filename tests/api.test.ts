@@ -1,11 +1,11 @@
 // Integration tests: run against a live server.
-//   BASE_URL=http://localhost:3000 API_KEY=... pnpm test
+//   BASE_URL=http://localhost:3000/api API_KEY=... pnpm test
 // WARNING: calls POST /reset, which wipes all data.
 import "dotenv/config";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const BASE = process.env.BASE_URL ?? "http://localhost:3000/api";
 const KEY = process.env.API_KEY!;
 
 const call = (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
