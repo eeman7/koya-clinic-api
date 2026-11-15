@@ -179,7 +179,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 /* ---------- API (via the same-origin gateway; the server adds the key) ---------- */
 async function api(path, opts = {}) {
-  const res = await fetch("/site" + path, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
+  const res = await fetch("/api/site" + path, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = new Error(data.error || "Something went wrong. Please try again.");

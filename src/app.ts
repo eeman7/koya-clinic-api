@@ -30,33 +30,37 @@ app.use(async (_req, _res, next) => {
   next();
 });
 
-// 1. Public: liveness probe and the booking web page 
-app.use("/health", healthRoutes);
+// The booking web page is the only thing served outside /api.
 app.use(express.static(path.join(process.cwd(), "public")));
 
-// 2. Web page gateway: the page calls /site/<api path>; the server adds the API
-//    key itself, so the browser never holds it. Only the calls the page needs are
-//    allowed (no /reset, no listing by email). Rate limits still apply.
+// Everything else lives under /api.
+const api = express.Router();
+
+// Public: liveness probe.
+api.use("/health", healthRoutes);
+
+// Web page gateway: the page calls /api/site/<path>; the server adds the API key
+// itself, so the browser never holds it. Only the calls the page needs are
+// allowed (no /reset, no listing by email). Rate limits still apply.
 const SITE_ALLOWED: [string, RegExp][] = [
   ["GET", /^\/slots(\?.*)?$/],
   ["POST", /^\/bookings$/],
   ["GET", /^\/bookings\/[^/?]+$/],
   ["DELETE", /^\/bookings\/[^/?]+$/],
 ];
-app.use((req, _res, next) => {
+api.use((req, _res, next) => {
   if (!req.url.startsWith("/site/")) return next();
   const target = req.url.slice("/site".length);
   if (!SITE_ALLOWED.some(([m, re]) => m === req.method && re.test(target))) {
     return next(new NotFoundException("not found"));
   }
-  req.url = "/api" + target;
+  req.url = target;
   req.headers["x-api-key"] = env.API_KEY;
   next();
 });
 
-// 3. The API, mounted at /api. The key guard runs before body parsing so a bad
-//    key always gets 401.
-const api = express.Router();
+// Everything below needs the API key. The guard runs before body parsing so a
+// bad key always gets 401.
 api.use(requireApiKey);
 api.use(express.json());
 api.use(slotsRoutes);
