@@ -1,11 +1,11 @@
 import "reflect-metadata";
-import path from "node:path";
 import { DataSource } from "typeorm";
 import { env } from "../config/env";
 import { Slot } from "./entities/slot.entity";
 import { Booking } from "./entities/booking.entity";
 import { IdempotencyKey } from "./entities/idempotency-key.entity";
 import { BookingAttempt } from "./entities/booking-attempt.entity";
+import { Migration1794763258841 } from "./migrations/1794763258841-Migration";
 
 /**
  * A single shared TypeORM DataSource for the whole process (also loaded by the
@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   type: "postgres",
   url: env.DATABASE_URL,
   entities: [Slot, Booking, IdempotencyKey, BookingAttempt],
-  migrations: [path.join(__dirname, "migrations", "*.{ts,js}")],
+  migrations: [Migration1794763258841],
   migrationsRun: true,
   synchronize: false,
   // Keep the pool small: serverless instances each open their own.
