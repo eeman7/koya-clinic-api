@@ -11,7 +11,8 @@
     "test": "tsx --test tests/*.test.ts",
     "typeorm": "tsx ./node_modules/typeorm/cli.js -d src/db/data-source.ts",
     "db:migrate": "pnpm typeorm migration:run",
-    "db:migrate:generate": "pnpm typeorm migration:generate src/db/migrations/Migration"
+    "db:migrate:generate": "pnpm typeorm migration:generate src/db/migrations/Migration",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "packageManager": "pnpm@10.30.3",
   "license": "ISC",

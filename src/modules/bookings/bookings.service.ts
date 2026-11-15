@@ -48,7 +48,8 @@ export class BookingsService {
           if (prev.request_hash !== requestHash) {
             throw new UnprocessableEntityException("Idempotency-Key was already used with a different request body");
           }
-          return { status: prev.status_code, body: prev.response };
+          // Stored as a JSON string so the replay is identical, field order included.
+          return { status: prev.status_code, body: JSON.parse(prev.response) };
         }
       }
 
@@ -58,7 +59,7 @@ export class BookingsService {
         await m.query("UPDATE idempotency_keys SET status_code = $2, response = $3 WHERE key = $1", [
           idempotencyKey,
           outcome.status,
-          JSON.stringify(outcome.body),
+          JSON.stringify(JSON.stringify(outcome.body)),
         ]);
       }
       return outcome;

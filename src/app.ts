@@ -5,10 +5,8 @@ import express from "express";
 import { initializeDatabase } from "./db/data-source";
 import { errorHandler } from "./common/middleware/error.middleware";
 import { requireApiKey } from "./common/middleware/api-key.middleware";
-import { env } from "./config/env";
 import { NotFoundException } from "./common/exceptions";
 
-import healthRoutes from "./modules/health/health.routes";
 import slotsRoutes from "./modules/slots/slots.routes";
 import bookingsRoutes from "./modules/bookings/bookings.routes";
 
@@ -36,30 +34,7 @@ app.use(express.static(path.join(process.cwd(), "public")));
 // Everything else lives under /api.
 const api = express.Router();
 
-// Public: liveness probe.
-api.use("/health", healthRoutes);
-
-// Web page gateway: the page calls /api/site/<path>; the server adds the API key
-// itself, so the browser never holds it. Only the calls the page needs are
-// allowed (no /reset, no listing by email). Rate limits still apply.
-const SITE_ALLOWED: [string, RegExp][] = [
-  ["GET", /^\/slots(\?.*)?$/],
-  ["POST", /^\/bookings$/],
-  ["GET", /^\/bookings\/[^/?]+$/],
-  ["DELETE", /^\/bookings\/[^/?]+$/],
-];
-api.use((req, _res, next) => {
-  if (!req.url.startsWith("/site/")) return next();
-  const target = req.url.slice("/site".length);
-  if (!SITE_ALLOWED.some(([m, re]) => m === req.method && re.test(target))) {
-    return next(new NotFoundException("not found"));
-  }
-  req.url = target;
-  req.headers["x-api-key"] = env.API_KEY;
-  next();
-});
-
-// Everything below needs the API key. The guard runs before body parsing so a
+// Every API request needs the API key. The guard runs before body parsing so a
 // bad key always gets 401.
 api.use(requireApiKey);
 api.use(express.json());

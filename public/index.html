@@ -134,6 +134,16 @@
 </div></header>
 
 <main>
+  <section class="card" id="key-card" style="grid-column:1/-1;max-width:460px;margin:0 auto;width:100%" hidden>
+    <h2>Access key</h2>
+    <p class="muted" style="margin-top:0">Enter the access key to view and book appointments. It is saved in this browser only.</p>
+    <form id="key-form">
+      <label for="key">Access key</label>
+      <input id="key" type="password" autocomplete="off" required>
+      <div class="row"><button class="btn" type="submit">Continue</button></div>
+    </form>
+    <div class="banner err" id="key-msg" role="alert" hidden></div>
+  </section>
   <section class="card" aria-label="Calendar">
     <h2>Select a date</h2>
     <div class="chips" id="providers" role="group" aria-label="Provider"></div>
@@ -178,9 +188,31 @@ const longDay = (d) => d.toLocaleDateString([], { weekday: "long", day: "numeric
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 /* ---------- API (via the same-origin gateway; the server adds the key) ---------- */
+const keyStore = {
+  get() { try { return localStorage.getItem("clinic_key") || ""; } catch { return ""; } },
+  set(v) { try { v ? localStorage.setItem("clinic_key", v) : localStorage.removeItem("clinic_key"); } catch { /* storage unavailable */ } },
+};
+let apiKey = keyStore.get();
+
+function askForKey(message) {
+  document.querySelector("main").querySelectorAll(":scope > section:not(#key-card), :scope > div").forEach((n) => { n.hidden = true; });
+  $("key-card").hidden = false;
+  $("key-msg").hidden = !message; $("key-msg").textContent = message || "";
+  $("key").focus();
+}
+$("key-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  apiKey = $("key").value.trim(); keyStore.set(apiKey); $("key").value = "";
+  $("key-card").hidden = true;
+  document.querySelector("main").querySelectorAll(":scope > section:not(#key-card), :scope > div").forEach((n) => { n.hidden = false; });
+  state.loaded = false; render(); load(false);
+});
+
 async function api(path, opts = {}) {
-  const res = await fetch("/api/site" + path, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (!apiKey) { askForKey(); throw Object.assign(new Error("An access key is required."), { status: 401, silent: true }); }
+  const res = await fetch("/api" + path, { ...opts, headers: { "X-API-Key": apiKey, "Content-Type": "application/json", ...(opts.headers || {}) } });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { apiKey = ""; keyStore.set(""); askForKey("That access key was not accepted. Please try again."); }
   if (!res.ok) {
     const e = new Error(data.error || "Something went wrong. Please try again.");
     e.status = res.status; e.retry = res.headers.get("Retry-After"); throw e;
@@ -223,7 +255,7 @@ async function load(keepSelection = true) {
     const days = byDay();
     if (!keepSelection || !state.day || !days.has(state.day)) pickInitialDay(days);
     if (state.slot && !state.slots.some((s) => s.id === state.slot.id && isOpen(s))) state.slot = null;
-  } catch (e) { state.loadError = e.message; state.loaded = true; }
+  } catch (e) { if (e.status === 401) return; state.loadError = e.message; state.loaded = true; }
   render();
 }
 function pickInitialDay(days) {
